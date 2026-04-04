@@ -14,44 +14,48 @@
     border-radius:8px;font-size:14px;
   }
 
-  .download-btn{
-    position:absolute;top:10px;right:10px;z-index:1000;
-    background:#e63946;color:#fff;border:none;
-    padding:10px 16px;border-radius:8px;cursor:pointer;
+  /* 浓度图例 */
+  .legend{
+    position:absolute;bottom:20px;right:20px;z-index:1000;
+    background:rgba(0,0,0,0.8);color:#fff;padding:12px 14px;
+    border-radius:8px;font-size:14px;line-height:1.7;
+  }
+  .legend span{
+    display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:8px;vertical-align:middle;
   }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div class="status" id="status">加载中...</div>
-<button class="download-btn" id="downloadPdfBtn">下载 PDF</button>
+
+<!-- 浓度图例 -->
+<div class="legend">
+  <div><span style="background:#ff0000;"></span> > 0.01 kg/m³</div>
+  <div><span style="background:#ffaa00;"></span> 0.001 ~ 0.01</div>
+  <div><span style="background:#ffff00;"></span> 0.0001 ~ 0.001</div>
+  <div><span style="background:#00ffff;"></span> ≤ 0.0001</div>
+</div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <script>
-  const { jsPDF } = window.jspdf;
-
-  // 固定地图范围（和你Python版完全一致）
   const map = L.map('map', {
     minZoom: 10,
     maxZoom: 17,
     zoomControl: true,
     attributionControl: false
   }).fitBounds([
-    [35.58, 51.20],   // 左下
-    [35.82, 51.55]    // 右上
+    [35.58, 51.20],
+    [35.82, 51.55]
   ]);
 
-  // Carto 底图（论文风格）
   L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
     maxZoom: 17
   }).addTo(map);
 
   const status = document.getElementById('status');
-  const downloadBtn = document.getElementById('downloadPdfBtn');
 
   async function getTodayCoords() {
     try {
@@ -73,7 +77,6 @@
     }
   }
 
-  // 每个坐标独立风速风向
   async function getWind(lat, lon) {
     try {
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
@@ -87,7 +90,6 @@
     }
   }
 
-  // 高斯烟羽（和Python版公式一致）
   function plume(lat0, lon0, u, wd) {
     const points = [];
     const degPerM = 1 / 111320.0;
@@ -122,32 +124,6 @@
     if (c > 0.0001) return '#ffff00';
     return '#00ffff';
   }
-
-  // 下载PDF：论文格式，和Python版完全一样
-  function downloadPDF() {
-    downloadBtn.textContent = "生成中...";
-    const mapElement = document.getElementById('map');
-
-    html2canvas(mapElement, {
-      scale: 3,
-      useCORS: true,
-      logging: false
-    }).then(canvas => {
-      const pdf = new jsPDF('landscape', 'mm', 'a4');
-      const dateStr = new Date().toISOString().split('T')[0];
-      const imgWidth = 280;
-      const imgHeight = canvas.height * imgWidth / canvas.width;
-
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
-      pdf.setFontSize(16);
-      pdf.text(`Tehran Airstrike Plume | ${dateStr}`, 10, 15);
-      pdf.save(`Tehran_Plume_${dateStr}.pdf`);
-
-      downloadBtn.textContent = "下载 PDF";
-    });
-  }
-
-  downloadBtn.addEventListener('click', downloadPDF);
 
   (async function main() {
     const coords = await getTodayCoords();

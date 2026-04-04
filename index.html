@@ -4,21 +4,21 @@
 <meta charset="UTF-8">
 <title>德黑兰实时空袭烟羽图</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body,#map{height:100%;width:100%;background:#111}
-#map{position:relative;}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body,#map{height:100%;width:100%;background:#111}
+  #map{position:relative;}
 
-.status{
-  position:absolute;top:10px;left:10px;z-index:1000;
-  background:rgba(0,0,0,0.7);color:#fff;padding:10px 14px;
-  border-radius:8px;font-family:Arial;font-size:14px;
-}
+  .status{
+    position:absolute;top:10px;left:10px;z-index:1000;
+    background:rgba(0,0,0,0.7);color:#fff;padding:10px 14px;
+    border-radius:8px;font-size:14px;
+  }
 
-.download-btn{
-  position:absolute;top:10px;right:10px;z-index:1000;
-  background:#e63946;color:#fff;border:none;
-  padding:10px 16px;border-radius:8px;font-size:14px;cursor:pointer;
-}
+  .download-btn{
+    position:absolute;top:10px;right:10px;z-index:1000;
+    background:#e63946;color:#fff;border:none;
+    padding:10px 16px;border-radius:8px;cursor:pointer;
+  }
 </style>
 </head>
 <body>
@@ -32,111 +32,143 @@ html,body,#map{height:100%;width:100%;background:#111}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <script>
-const { jsPDF } = window.jspdf;
-const map = L.map('map').setView([35.689, 51.389], 12);
+  const { jsPDF } = window.jspdf;
 
-// 🔥 这里已经改成 Carto 底图（和你Python版一模一样）
-L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
-  maxZoom: 17,
-  attribution: '&copy; <a href=" ">OpenStreetMap</a > &copy; <a href="https://carto.com/attributions">CARTO</a >'
-}).addTo(map);
+  // 固定地图范围（和你Python版完全一致）
+  const map = L.map('map', {
+    minZoom: 10,
+    maxZoom: 17,
+    zoomControl: true,
+    attributionControl: false
+  }).fitBounds([
+    [35.58, 51.20],   // 左下
+    [35.82, 51.55]    // 右上
+  ]);
 
-const status = document.getElementById('status');
-const downloadBtn = document.getElementById('downloadPdfBtn');
+  // Carto 底图（论文风格）
+  L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+    maxZoom: 17
+  }).addTo(map);
 
-async function getTodayCoords() {
-  try {
-    const t = Date.now();
-    const resp = await fetch(`https://seed-public.oss-cn-beijing.aliyuncs.com/tehran_today.json?t=${t}`, {
-      cache: "no-store"
-    });
-    const data = await resp.json();
-    return data.coords || [];
-  } catch (e) {
-    return [
-      [35.7310, 51.4660],
-      [35.7450, 51.4820],
-      [35.7520, 51.4910],
-      [35.7120, 51.4380],
-      [35.6980, 51.4050],
-      [35.6890, 51.3890],
-      [35.6790, 51.3230],
-      [35.6670, 51.2500]
-    ];
-  }
-}
+  const status = document.getElementById('status');
+  const downloadBtn = document.getElementById('downloadPdfBtn');
 
-async function getWind(lat, lon) {
-  try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
-    const r = await fetch(url, { cache: "no-store" });
-    const d = await d.json();
-    const u = d.current.wind_speed_10m;
-    const wd = d.current.wind_direction_10m;
-    return (u > 0 && u < 30) ? [u, wd] : [2.2, 50];
-  } catch (e) {
-    return [2.2, 50];
-  }
-}
-
-function plume(lat0, lon0, u, wd) {
-  const points = [];
-  const degPerM = 1 / 111320;
-  const theta = (270 - wd) * Math.PI / 180;
-  const Q = 80, H = 10;
-  const xMax = u * 3600;
-
-  for (let i = 1; i <= 40; i++) {
-    const x = (i / 40) * xMax;
-    for (let j = -40; j <= 40; j++) {
-      const y = (j / 40) * xMax;
-      const sy = 0.32 * x / Math.sqrt(1 + 0.0004 * x);
-      const sz = 0.24 * x / Math.sqrt(1 + 0.0003 * x);
-      const c = (Q / (2 * Math.PI * u * sy * sz)) * Math.exp(-y * y / (2 * sy * sy)) * Math.exp(-H * H / (2 * sz * sz));
-      if (c < 1e-5) continue;
-      const xr = x * Math.cos(theta) - y * Math.sin(theta);
-      const yr = x * Math.sin(theta) + y * Math.cos(theta);
-      points.push([lat0 + yr * degPerM, lon0 + xr * degPerM, c]);
+  async function getTodayCoords() {
+    try {
+      const t = Date.now();
+      const resp = await fetch(`https://seed-public.oss-cn-beijing.aliyuncs.com/tehran_today.json?t=${t}`, { cache: "no-store" });
+      const data = await resp.json();
+      return data.coords || [];
+    } catch (e) {
+      return [
+        [35.7310, 51.4660],
+        [35.7450, 51.4820],
+        [35.7520, 51.4910],
+        [35.7120, 51.4380],
+        [35.6980, 51.4050],
+        [35.6890, 51.3890],
+        [35.6790, 51.3230],
+        [35.6670, 51.2500]
+      ];
     }
   }
-  return points;
-}
 
-function color(c) {
-  if(c>0.01) return '#f00';
-  if(c>0.001) return '#fa0';
-  if(c>0.0001) return '#ff0';
-  return '#0cf';
-}
+  // 每个坐标独立风速风向
+  async function getWind(lat, lon) {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
+      const r = await fetch(url, { cache: "no-store" });
+      const d = await r.json();
+      const u = d.current.wind_speed_10m;
+      const wd = d.current.wind_direction_10m;
+      return (u > 0 && u < 30) ? [u, wd] : [2.2, 50];
+    } catch (e) {
+      return [2.2, 50];
+    }
+  }
 
-function downloadPDF() {
-  downloadBtn.textContent = "正在生成PDF...";
-  html2canvas(document.getElementById('map'), { scale: 2 }).then(canvas => {
-    const pdf = new jsPDF('landscape', 'mm', 'a4');
-    const imgWidth = 280;
-    const imgHeight = canvas.height * imgWidth / canvas.width;
-    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
-    pdf.save(`Tehran_Plume_${new Date().toISOString().split('T')[0]}.pdf`);
-    downloadBtn.textContent = "下载 PDF";
-  });
-}
+  // 高斯烟羽（和Python版公式一致）
+  function plume(lat0, lon0, u, wd) {
+    const points = [];
+    const degPerM = 1 / 111320.0;
+    const theta = (270 - wd) * Math.PI / 180;
+    const Q = 80;
+    const H = 10;
+    const xMax = u * 3600;
 
-downloadBtn.addEventListener('click', downloadPDF);
+    for (let i = 1; i <= 40; i++) {
+      const x = (i / 40) * xMax;
+      for (let j = -40; j <= 40; j++) {
+        const y = (j / 40) * xMax;
+        const sy = 0.32 * x / Math.sqrt(1 + 0.0004 * x);
+        const sz = 0.24 * x / Math.sqrt(1 + 0.0003 * x);
+        const c = (Q / (2 * Math.PI * u * sy * sz))
+          * Math.exp(-y * y / (2 * sy * sy))
+          * Math.exp(-H * H / (2 * sz * sz));
+        if (c < 1e-5) continue;
+        const xr = x * Math.cos(theta) - y * Math.sin(theta);
+        const yr = x * Math.sin(theta) + y * Math.cos(theta);
+        const lat = lat0 + yr * degPerM;
+        const lon = lon0 + xr * degPerM;
+        points.push([lat, lon, c]);
+      }
+    }
+    return points;
+  }
 
-(async function main() {
-  const coords = await getTodayCoords();
-  status.textContent = `✅ 今日目标：${coords.length} 个`;
+  function color(c) {
+    if (c > 0.01) return '#ff0000';
+    if (c > 0.001) return '#ffaa00';
+    if (c > 0.0001) return '#ffff00';
+    return '#00ffff';
+  }
 
-  for (const [lat, lon] of coords) {
-    const [u, wd] = await getWind(lat, lon);
-    L.circleMarker([lat, lon], { radius:6, color:'#f00', fillColor:'#f00', fillOpacity:1 }).addTo(map);
-    const points = plume(lat, lon, u, wd);
-    const group = L.layerGroup().addTo(map);
-    points.forEach(([plat, plon, c]) => {
-      L.circleMarker([plat, plon], { radius:1.5, color:color(c), fillColor:color(c), fillOpacity:0.6 }).addTo(group);
+  // 下载PDF：论文格式，和Python版完全一样
+  function downloadPDF() {
+    downloadBtn.textContent = "生成中...";
+    const mapElement = document.getElementById('map');
+
+    html2canvas(mapElement, {
+      scale: 3,
+      useCORS: true,
+      logging: false
+    }).then(canvas => {
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      const dateStr = new Date().toISOString().split('T')[0];
+      const imgWidth = 280;
+      const imgHeight = canvas.height * imgWidth / canvas.width;
+
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.setFontSize(16);
+      pdf.text(`Tehran Airstrike Plume | ${dateStr}`, 10, 15);
+      pdf.save(`Tehran_Plume_${dateStr}.pdf`);
+
+      downloadBtn.textContent = "下载 PDF";
     });
   }
-})();
+
+  downloadBtn.addEventListener('click', downloadPDF);
+
+  (async function main() {
+    const coords = await getTodayCoords();
+    status.textContent = `✅ 今日目标：${coords.length} 个`;
+
+    for (const [lat, lon] of coords) {
+      const [u, wd] = await getWind(lat, lon);
+      L.circleMarker([lat, lon], { radius:6, color:'red', fillColor:'red', fillOpacity:1 }).addTo(map);
+
+      const points = plume(lat, lon, u, wd);
+      const group = L.layerGroup().addTo(map);
+      points.forEach(([plat, plon, c]) => {
+        L.circleMarker([plat, plon], {
+          radius: 1.5,
+          color: color(c),
+          fillColor: color(c),
+          fillOpacity: 0.6
+        }).addTo(group);
+      });
+    }
+  })();
 </script>
 </body>
 </html>

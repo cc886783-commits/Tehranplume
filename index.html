@@ -14,7 +14,6 @@ html,body,#map{height:100%;width:100%;background:#111}
   border-radius:8px;font-family:Arial;font-size:14px;
 }
 
-/* 下载按钮样式 */
 .download-btn{
   position:absolute;top:10px;right:10px;z-index:1000;
   background:#e63946;color:#fff;border:none;
@@ -35,7 +34,13 @@ html,body,#map{height:100%;width:100%;background:#111}
 <script>
 const { jsPDF } = window.jspdf;
 const map = L.map('map').setView([35.689, 51.389], 12);
-L.tileLayer('https://tile.openstreet.org/{z}/{x}/{y}.png', { maxZoom: 17 }).addTo(map);
+
+// 🔥 这里已经改成 Carto 底图（和你Python版一模一样）
+L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+  maxZoom: 17,
+  attribution: '&copy; <a href=" ">OpenStreetMap</a > &copy; <a href="https://carto.com/attributions">CARTO</a >'
+}).addTo(map);
+
 const status = document.getElementById('status');
 const downloadBtn = document.getElementById('downloadPdfBtn');
 
@@ -65,7 +70,7 @@ async function getWind(lat, lon) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
     const r = await fetch(url, { cache: "no-store" });
-    const d = await r.json();
+    const d = await d.json();
     const u = d.current.wind_speed_10m;
     const wd = d.current.wind_direction_10m;
     return (u > 0 && u < 30) ? [u, wd] : [2.2, 50];
@@ -104,7 +109,6 @@ function color(c) {
   return '#0cf';
 }
 
-// 下载PDF逻辑
 function downloadPDF() {
   downloadBtn.textContent = "正在生成PDF...";
   html2canvas(document.getElementById('map'), { scale: 2 }).then(canvas => {
@@ -119,7 +123,6 @@ function downloadPDF() {
 
 downloadBtn.addEventListener('click', downloadPDF);
 
-// 主程序
 (async function main() {
   const coords = await getTodayCoords();
   status.textContent = `✅ 今日目标：${coords.length} 个`;

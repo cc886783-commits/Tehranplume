@@ -87,19 +87,17 @@ map.on('mousemove', (e) => {
   mouseCoord.textContent = `📍 ${lat}, ${lng}`;
 });
 
-// ======================
-// Diffusion range = 60%
-// ======================
 function plume(lat0, lon0, u, wd) {
   const points = [];
-  const degPerM = 1 / 180000;
+  const degPerM = 1 / 111320;
   const theta = (270 - wd) * Math.PI / 180;
   const Q = 80, H = 10;
-  const xMax = u * 150; // 👈 扩散范围缩到 60%
+  const xMax = u * 900;
 
-  for (let i = 1; i <= 120; i+=3) {
+  // 👇 更稀疏：i += 3，j += 3
+  for (let i = 1; i <= 120; i += 3) {
     const x = (i / 120) * xMax;
-    for (let j = -120; j <= 120; j+=3) {
+    for (let j = -120; j <= 120; j += 3) {
       const y = (j / 120) * xMax;
       const sy = 0.32 * x / Math.sqrt(1 + 0.0004 * x);
       const sz = 0.24 * x / Math.sqrt(1 + 0.0003 * x);
@@ -117,7 +115,9 @@ function plume(lat0, lon0, u, wd) {
   return points;
 }
 
-// 6-level gradient
+// ======================
+// 6 级浓度梯度
+// ======================
 function color(c) {
   if (c > 0.003)   return '#ff0000';
   if (c > 0.001)   return '#ff5500';
@@ -129,14 +129,14 @@ function color(c) {
 
 async function getLocalWind(lat, lon) {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
+    const url = `https://api.open-meteo.com/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
     const r = await fetch(url);
     const d = await r.json();
     const speed = d.current.wind_speed_10m || 2.2;
     const dir = d.current.wind_direction_10m || 270;
     return [speed, dir];
   } catch (e) {
-    return [2.2, 200 + Math.random() * 160];
+    return [N/A];
   }
 }
 
@@ -152,7 +152,7 @@ async function addPoint(lat, lng) {
   
   points.forEach(([plat, plon, c]) => {
     L.circleMarker([plat, plon], {
-      radius: 1.3,          // 👈 恢复成原始正常大小
+      radius: 1.3,
       color: color(c),
       fillColor: color(c),
       fillOpacity: 0.75

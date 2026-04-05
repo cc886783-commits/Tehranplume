@@ -87,12 +87,15 @@ map.on('mousemove', (e) => {
   mouseCoord.textContent = `📍 ${lat}, ${lng}`;
 });
 
+// ======================
+// Diffusion range = 60%
+// ======================
 function plume(lat0, lon0, u, wd) {
   const points = [];
   const degPerM = 1 / 111320;
   const theta = (270 - wd) * Math.PI / 180;
   const Q = 80, H = 10;
-  const xMax = u * 450;
+  const xMax = u * 1080; // 👈 扩散范围缩到 60%
 
   for (let i = 1; i <= 120; i++) {
     const x = (i / 120) * xMax;
@@ -114,16 +117,14 @@ function plume(lat0, lon0, u, wd) {
   return points;
 }
 
-// ======================
-// 6级浓度梯度（更细腻）
-// ======================
+// 6-level gradient
 function color(c) {
-  if (c > 0.003)   return '#ff0000';    // 红
-  if (c > 0.001)   return '#ff5500';    // 橙红
-  if (c > 0.0003)  return '#ff9100';    // 深橙
-  if (c > 0.0001)  return '#ffcc00';    // 浅橙
-  if (c > 0.00003) return '#ffff00';    // 黄
-  return '#0088ff';                     // 蓝
+  if (c > 0.003)   return '#ff0000';
+  if (c > 0.001)   return '#ff5500';
+  if (c > 0.0003)  return '#ff9100';
+  if (c > 0.0001)  return '#ffcc00';
+  if (c > 0.00003) return '#ffff00';
+  return '#0088ff';
 }
 
 async function getLocalWind(lat, lon) {
@@ -151,7 +152,7 @@ async function addPoint(lat, lng) {
   
   points.forEach(([plat, plon, c]) => {
     L.circleMarker([plat, plon], {
-      radius: 3.9,
+      radius: 1.5,          // 👈 恢复成原始正常大小
       color: color(c),
       fillColor: color(c),
       fillOpacity: 0.35

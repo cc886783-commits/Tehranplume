@@ -53,12 +53,10 @@
 <div class="mouse-coord" id="mouseCoord">📍 Coord: -- , --</div>
 
 <div class="legend">
-  <div><span style="background:#ff0000;"></span> > 0.003 kg/m³</div>
-  <div><span style="background:#ff5500;"></span> 0.001 ~ 0.003</div>
-  <div><span style="background:#ff9100;"></span> 0.0003 ~ 0.001</div>
-  <div><span style="background:#ffcc00;"></span> 0.0001 ~ 0.0003</div>
-  <div><span style="background:#ffff00;"></span> 0.00003 ~ 0.0001</div>
-  <div><span style="background:#0088ff;"></span> ≤ 0.00003</div>
+  <div><span style="background:#ff0000;"></span> > 0.005 kg/m³</div>
+  <div><span style="background:#ff9100;"></span> 0.0005 ~ 0.005</div>
+  <div><span style="background:#ffff00;"></span> 0.00005 ~ 0.0005</div>
+  <div><span style="background:#0088ff;"></span> ≤ 0.00005</div>
 </div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -87,19 +85,18 @@ map.on('mousemove', (e) => {
   mouseCoord.textContent = `📍 ${lat}, ${lng}`;
 });
 
-// ======================
-// Diffusion range = 60%
-// ======================
 function plume(lat0, lon0, u, wd) {
   const points = [];
-  const degPerM = 1 / 250000;
+  const degPerM = 1 / 111320;
   const theta = (270 - wd) * Math.PI / 180;
   const Q = 80, H = 10;
-  const xMax = u * 1800; // 👈 扩散范围缩到 60%
 
-  for (let i = 1; i <= 120; i++) {
+  // 👇 这里从 1800 改成 900 → 整体烟羽面积减小一半
+  const xMax = u * 900;
+
+  for (let i = 1; i <= 120; i += 2) {
     const x = (i / 120) * xMax;
-    for (let j = -120; j <= 120; j++) {
+    for (let j = -120; j <= 120; j += 2) {
       const y = (j / 120) * xMax;
       const sy = 0.32 * x / Math.sqrt(1 + 0.0004 * x);
       const sz = 0.24 * x / Math.sqrt(1 + 0.0003 * x);
@@ -117,19 +114,16 @@ function plume(lat0, lon0, u, wd) {
   return points;
 }
 
-// 6-level gradient
 function color(c) {
-  if (c > 0.003)   return '#ff0000';
-  if (c > 0.001)   return '#ff5500';
-  if (c > 0.0003)  return '#ff9100';
-  if (c > 0.0001)  return '#ffcc00';
-  if (c > 0.00003) return '#ffff00';
+  if (c > 0.005)  return '#ff0000';
+  if (c > 0.0005) return '#ff9100';
+  if (c > 0.00005) return '#ffff00';
   return '#0088ff';
 }
 
 async function getLocalWind(lat, lon) {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
+    const url = `https://api.open-meteo.com/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
     const r = await fetch(url);
     const d = await r.json();
     const speed = d.current.wind_speed_10m || 2.2;
@@ -152,7 +146,7 @@ async function addPoint(lat, lng) {
   
   points.forEach(([plat, plon, c]) => {
     L.circleMarker([plat, plon], {
-      radius: 1,          // 👈 恢复成原始正常大小
+      radius: 1.3,
       color: color(c),
       fillColor: color(c),
       fillOpacity: 0.75

@@ -95,11 +95,11 @@ function plume(lat0, lon0, u, wd) {
   const degPerM = 1 / 180000;
   const theta = (270 - wd) * Math.PI / 180;
   const Q = 80, H = 10;
-  const xMax = u * 300; // 👈 扩散范围缩到 60%
+  const xMax = u * 150; // 👈 扩散范围缩到 60%
 
-  for (let i = 1; i <= 120; i+=2) {
+  for (let i = 1; i <= 120; i+=3) {
     const x = (i / 120) * xMax;
-    for (let j = -120; j <= 120; j+=2) {
+    for (let j = -120; j <= 120; j+=3) {
       const y = (j / 120) * xMax;
       const sy = 0.32 * x / Math.sqrt(1 + 0.0004 * x);
       const sz = 0.24 * x / Math.sqrt(1 + 0.0003 * x);

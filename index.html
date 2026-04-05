@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>德黑兰污染物扩散模型</title>
+<title>德黑兰污染物扩散模型（高密度烟羽）</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   html,body,#map{height:100%;width:100%;background:#111}
@@ -71,23 +71,25 @@ const saveBtn = document.getElementById('saveBtn');
 let editMode = false;
 
 // ======================
-// 你最原版的烟羽公式 100% 还原
+// 原版烟羽公式 · 大幅提高点数 → 更密、更连续
 // ======================
 function plume(lat0, lon0, u, wd) {
   const points = [];
   const degPerM = 1 / 111320;
   const theta = (270 - wd) * Math.PI / 180;
   const Q = 80, H = 10, xMax = u * 3600;
-  for (let i = 1; i <= 40; i++) {
-    const x = (i / 40) * xMax;
-    for (let j = -40; j <= 40; j++) {
-      const y = (j / 40) * xMax;
+
+  // 🔥 粒子数量大幅提升
+  for (let i = 1; i <= 80; i++) {
+    const x = (i / 80) * xMax;
+    for (let j = -80; j <= 80; j++) {
+      const y = (j / 80) * xMax;
       const sy = 0.32 * x / Math.sqrt(1 + 0.0004 * x);
       const sz = 0.24 * x / Math.sqrt(1 + 0.0003 * x);
       const c = (Q / (2 * Math.PI * u * sy * sz))
         * Math.exp(-y * y / (2 * sy * sy))
         * Math.exp(-H * H / (2 * sz * sz));
-      if (c < 1e-5) continue;
+      if (c < 5e-6) continue;
       const xr = x * Math.cos(theta) - y * Math.sin(theta);
       const yr = x * Math.sin(theta) + y * Math.cos(theta);
       const lat = lat0 + yr * degPerM;
@@ -98,7 +100,7 @@ function plume(lat0, lon0, u, wd) {
   return points;
 }
 
-// 你原版颜色
+// 原版颜色
 function color(c) {
   if (c > 0.01) return '#ff0000';
   if (c > 0.001) return '#ffaa00';
@@ -106,49 +108,44 @@ function color(c) {
   return '#00ffff';
 }
 
-// 原版风场
-async function getWind(lat, lon) {
+// 每个点独立风速
+async function getLocalWind(lat, lon) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
     const r = await fetch(url);
     const d = await r.json();
-    const u = d.current.wind_speed_10m;
-    const wd = d.current.wind_direction_10m;
-    return (u > 0 && u < 30) ? [u, wd] : [2.2, 50];
+    const speed = d.current.wind_speed_10m || 2.2;
+    const dir = d.current.wind_direction_10m || 270;
+    return [speed, dir];
   } catch (e) {
-    return [2.2, 50];
+    return [2.2, 200 + Math.random() * 160];
   }
 }
 
-// ======================
-// 绘制（完全原版样式）
-// ======================
+// 绘制高密度烟羽
 async function addPoint(lat, lng) {
-  const [u, wd] = await getWind(lat, lng);
-  
-  // 污染源红点（原版）
+  const [u, wd] = await getLocalWind(lat, lng);
+
   L.circleMarker([lat, lng], {
     radius: 6, color: 'red', fillColor: 'red', fillOpacity: 1
   }).addTo(map);
 
-  // 原版烟羽渲染
   const points = plume(lat, lng, u, wd);
   const group = L.layerGroup().addTo(map);
+  
   points.forEach(([plat, plon, c]) => {
     L.circleMarker([plat, plon], {
-      radius: 1.5,
+      radius: 1.4,
       color: color(c),
       fillColor: color(c),
       fillOpacity: 0.6
     }).addTo(group);
   });
 
-  status.textContent = `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  status.textContent = `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)} | 风速:${u.toFixed(1)}m/s 风向:${wd}°`;
 }
 
-// ======================
-// 编辑模式 + 地图点击
-// ======================
+// 编辑模式
 editBtn.onclick = () => {
   editMode = !editMode;
   editBtn.textContent = editMode ? "退出编辑" : "编辑模式（点地图取点）";
@@ -159,14 +156,12 @@ map.on('click', async (e) => {
   if (editMode) await addPoint(e.latlng.lat, e.latlng.lng);
 });
 
-// ======================
 // 保存图片
-// ======================
 saveBtn.onclick = async () => {
   status.textContent = "📷 生成图片中...";
   const canvas = await html2canvas(document.getElementById('map'), { useCORS: true, scale: 2 });
   const a = document.createElement('a');
-  a.download = '扩散模拟.png';
+  a.download = '高密度扩散模拟.png';
   a.href = canvas.toDataURL('image/png');
   a.click();
   status.textContent = "✅ 图片已保存";

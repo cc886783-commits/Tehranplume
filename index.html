@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>德黑兰污染物扩散模型</title>
+<title>Tehran Pollution Dispersion Model</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   html,body,#map{height:100%;width:100%;background:#111}
@@ -25,7 +25,6 @@
     border-radius:8px;font-size:14px
   }
 
-  /* 鼠标实时坐标 */
   .mouse-coord{
     position:absolute;bottom:10px;left:10px;z-index:1000;
     background:rgba(0,0,0,0.8);color:#fff;padding:8px 12px;
@@ -46,19 +45,18 @@
 <div id="map"></div>
 
 <div class="control">
-  <button class="edit" id="editBtn">编辑模式（点地图取点）</button>
-  <button class="save" id="saveBtn">生成并保存图片</button>
+  <button class="edit" id="editBtn">Edit Mode (Click Map)</button>
+  <button class="save" id="saveBtn">Save as Image</button>
 </div>
-<div class="status" id="status">👉 点击【编辑模式】后点地图取污染源</div>
+<div class="status" id="status">👉 Click [Edit Mode] then click map to add source</div>
 
-<!-- 鼠标实时坐标显示 -->
-<div class="mouse-coord" id="mouseCoord">📍 坐标：-- , --</div>
+<div class="mouse-coord" id="mouseCoord">📍 Coord: -- , --</div>
 
 <div class="legend">
   <div><span style="background:#ff0000;"></span> > 0.005 kg/m³</div>
-  <div><span style="background:#ff9100;"></span> 0.0005~0.005</div>
-  <div><span style="background:#ffff00;"></span> 0.00005~0.0005</div>
-  <div><span style="background:#0088ff;"></span> ≤0.00005</div>
+  <div><span style="background:#ff9100;"></span> 0.0005 ~ 0.005</div>
+  <div><span style="background:#ffff00;"></span> 0.00005 ~ 0.0005</div>
+  <div><span style="background:#0088ff;"></span> ≤ 0.00005</div>
 </div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -81,9 +79,6 @@ const mouseCoord = document.getElementById('mouseCoord');
 
 let editMode = false;
 
-// ======================
-// 🔥 鼠标移动实时显示坐标
-// ======================
 map.on('mousemove', (e) => {
   const lat = e.latlng.lat.toFixed(5);
   const lng = e.latlng.lng.toFixed(5);
@@ -91,14 +86,14 @@ map.on('mousemove', (e) => {
 });
 
 // ======================
-// 烟羽（面积缩小一半 + 高密度）
+// 烟羽面积再缩小一半 + 更高透明度
 // ======================
 function plume(lat0, lon0, u, wd) {
   const points = [];
   const degPerM = 1 / 111320;
   const theta = (270 - wd) * Math.PI / 180;
   const Q = 80, H = 10;
-  const xMax = u * 1800;
+  const xMax = u * 900; // 👈 再缩小一半 (从 1800 → 900)
 
   for (let i = 1; i <= 120; i++) {
     const x = (i / 120) * xMax;
@@ -120,7 +115,6 @@ function plume(lat0, lon0, u, wd) {
   return points;
 }
 
-// 浓度梯度更强
 function color(c) {
   if (c > 0.005)  return '#ff0000';
   if (c > 0.0005) return '#ff9100';
@@ -128,7 +122,6 @@ function color(c) {
   return '#0088ff';
 }
 
-// 独立风速
 async function getLocalWind(lat, lon) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
@@ -142,7 +135,6 @@ async function getLocalWind(lat, lon) {
   }
 }
 
-// 绘制点
 async function addPoint(lat, lng) {
   const [u, wd] = await getLocalWind(lat, lng);
 
@@ -158,33 +150,31 @@ async function addPoint(lat, lng) {
       radius: 1.3,
       color: color(c),
       fillColor: color(c),
-      fillOpacity: 0.75
+      fillOpacity: 0.35 // 👈 透明度大幅提高（更淡）
     }).addTo(group);
   });
 
-  status.textContent = `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)} | 风速:${u.toFixed(1)}m/s 风向:${wd}°`;
+  status.textContent = `📍 ${lat.toFixed(4)}, ${lng.toFixed(4)} | Wind: ${u.toFixed(1)}m/s Dir: ${wd}°`;
 }
 
-// 编辑模式
 editBtn.onclick = () => {
   editMode = !editMode;
-  editBtn.textContent = editMode ? "退出编辑" : "编辑模式（点地图取点）";
-  status.textContent = editMode ? "✅ 点地图标记污染源" : "👉 退出编辑";
+  editBtn.textContent = editMode ? "Exit Edit" : "Edit Mode (Click Map)";
+  status.textContent = editMode ? "✅ Click map to add pollution source" : "👉 Exited Edit Mode";
 };
 
 map.on('click', async (e) => {
   if (editMode) await addPoint(e.latlng.lat, e.latlng.lng);
 });
 
-// 保存图片
 saveBtn.onclick = async () => {
-  status.textContent = "📷 生成图片中...";
+  status.textContent = "📷 Generating image...";
   const canvas = await html2canvas(document.getElementById('map'), { useCORS: true, scale: 2 });
   const a = document.createElement('a');
-  a.download = '扩散模拟.png';
+  a.download = 'dispersion_simulation.png';
   a.href = canvas.toDataURL('image/png');
   a.click();
-  status.textContent = "✅ 图片已保存";
+  status.textContent = "✅ Image saved";
 };
 </script>
 </body>

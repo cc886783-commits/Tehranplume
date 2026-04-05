@@ -92,7 +92,7 @@ map.on('mousemove', (e) => {
 // ======================
 function plume(lat0, lon0, u, wd) {
   const points = [];
-  const degPerM = 1 / 180000;
+  const degPerM = 1 / 250000;
   const theta = (270 - wd) * Math.PI / 180;
   const Q = 80, H = 10;
   const xMax = u * 1800; // 👈 扩散范围缩到 60%
@@ -155,7 +155,7 @@ async function addPoint(lat, lng) {
       radius: 1,          // 👈 恢复成原始正常大小
       color: color(c),
       fillColor: color(c),
-      fillOpacity: 0.35
+      fillOpacity: 0.75
     }).addTo(group);
   });
 

@@ -44,13 +44,33 @@ L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x
 
 const status = document.getElementById('status');
 
+// 自动从 Liveuamap 抓取当天坐标，无兜底、无写死
 async function getTodayCoords() {
   try {
-    // ✅ 稳定 GitHub Gist 接口
-    const resp = await fetch(`https://gist.githubusercontent.com/baobao-tehran/69d18e3f6a9c0f887a3e26d8d7c89b21/raw/tehran_coords.json?t=${Date.now()}`, { cache: "no-store" });
-    const data = await resp.json();
-    return data.coords || [];
+    status.textContent = "🔍 抓取实时数据...";
+    const proxy = "https://api.allorigins.win/get?url=";
+    const api = "https://iran.liveuamap.com/get?last=100&json=1";
+    const resp = await fetch(proxy + encodeURIComponent(api));
+    const json = await resp.json();
+    const data = JSON.parse(json.contents);
+
+    const today = new Date().toISOString().split('T')[0];
+    const coords = [];
+
+    for (const item of data) {
+      if (!item.lat || !item.lng) continue;
+      const isTehran = (item.lat>35.5&&item.lat<35.9&&item.lng>51.0&&item.lng<51.8);
+      const isToday = item.time.startsWith(today);
+      const isStrike = /airstrike|explosion|bomb|missile|strike/i.test(item.title);
+      if (isTehran && isToday && isStrike) {
+        coords.push([item.lat, item.lng]);
+      }
+    }
+    const unique = [...new Map(coords.map(p => [p.join(','),p])).values()];
+    return unique.slice(0,6);
   } catch (e) {
+    console.error("抓取失败", e);
+    // ✅ 已删除所有兜底坐标，直接返回空
     return [];
   }
 }

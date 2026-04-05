@@ -94,6 +94,7 @@ function plume(lat0, lon0, u, wd) {
   const Q = 80, H = 10;
   const xMax = u * 900;
 
+  // 👇 更稀疏：i += 3，j += 3
   for (let i = 1; i <= 120; i += 3) {
     const x = (i / 120) * xMax;
     for (let j = -120; j <= 120; j += 3) {
@@ -114,6 +115,9 @@ function plume(lat0, lon0, u, wd) {
   return points;
 }
 
+// ======================
+// 6 级浓度梯度
+// ======================
 function color(c) {
   if (c > 0.003)   return '#ff0000';
   if (c > 0.001)   return '#ff5500';
@@ -123,35 +127,17 @@ function color(c) {
   return '#0088ff';
 }
 
-// ======================
-// 风速、风向 分别独立获取
-// ======================
-async function getWindSpeed(lat, lon) {
-  try {
-    const url = `https://api.open-meteo.com/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m&wind_speed_unit=ms`;
-    const r = await fetch(url);
-    const d = await r.json();
-    return d.current.wind_speed_10m || 2.2;
-  } catch (e) {
-    return 2.2;
-  }
-}
-
-async function getWindDirection(lat, lon) {
-  try {
-    const url = `https://api.open-meteo.com/forecast?latitude=${lat}&longitude=${lon}&current=wind_direction_10m`;
-    const r = await fetch(url);
-    const d = await r.json();
-    return d.current.wind_direction_10m || 270;
-  } catch (e) {
-    return 270;
-  }
-}
-
 async function getLocalWind(lat, lon) {
-  const u = await getWindSpeed(lat, lon);
-  const wd = await getWindDirection(lat, lon);
-  return [u, wd];
+  try {
+    const url = `https://api.open-meteo.com/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
+    const r = await fetch(url);
+    const d = await r.json();
+    const speed = d.current.wind_speed_10m || 2.2;
+    const dir = d.current.wind_direction_10m || 270;
+    return [speed, dir];
+  } catch (e) {
+    return [2.2, 200 + Math.random() * 160];
+  }
 }
 
 async function addPoint(lat, lng) {
@@ -162,7 +148,7 @@ async function addPoint(lat, lng) {
   }).addTo(map);
 
   const points = plume(lat, lng, u, wd);
-  const group = L.layerGroup().addTo(group);
+  const group = L.layerGroup().addTo(map);
   
   points.forEach(([plat, plon, c]) => {
     L.circleMarker([plat, plon], {

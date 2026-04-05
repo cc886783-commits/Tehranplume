@@ -2,29 +2,47 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>德黑兰实时空袭烟羽图</title>
+<title>德黑兰污染物扩散模型</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   html,body,#map{height:100%;width:100%;background:#111}
-  #map{position:relative;}
-  .status{
+  #map{position:relative;z-index:1}
+
+  .control{
     position:absolute;top:10px;left:10px;z-index:1000;
-    background:rgba(0,0,0,0.7);color:#fff;padding:10px 14px;
-    border-radius:8px;font-size:14px;
+    background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;
+    border-radius:8px;font-size:14px;display:flex;gap:8px
   }
+  .control button{
+    padding:6px 10px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer}
+  .control .edit{background:#e67e22}
+  .control .save{background:#27ae60}
+
+  .status{
+    position:absolute;top:60px;left:10px;z-index:1000;
+    background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;
+    border-radius:8px;font-size:14px
+  }
+
   .legend{
-    position:absolute;bottom:20px;right:20px;z-index:1000;
-    background:rgba(0,0,0,0.8);color:#fff;padding:12px 14px;
-    border-radius:8px;font-size:14px;line-height:1.7;
+    position:absolute;bottom:10px;right:10px;z-index:1000;
+    background:rgba(0,0,0,0.8);color:#fff;padding:10px;
+    border-radius:8px;font-size:14px;line-height:1.6
   }
   .legend span{
-    display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:8px;vertical-align:middle;
+    display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:6px;vertical-align:middle
   }
 </style>
 </head>
 <body>
 <div id="map"></div>
-<div class="status" id="status">加载中...</div>
+
+<div class="control">
+  <button class="edit" id="editBtn">编辑模式（点地图取点）</button>
+  <button class="save" id="saveBtn">生成并保存图片</button>
+</div>
+<div class="status" id="status">👉 点击【编辑模式】后点地图取污染源</div>
+
 <div class="legend">
   <div><span style="background:#ff0000;"></span> > 0.01 kg/m³</div>
   <div><span style="background:#ffaa00;"></span> 0.001 ~ 0.01</div>
@@ -34,110 +52,116 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <script>
 const map = L.map('map', {
-  minZoom: 10, maxZoom: 17, zoomControl: true, attributionControl: false
-}).fitBounds([[35.58,51.20],[35.82,51.55]]);
+  minZoom: 8, maxZoom: 18, zoomControl: true, attributionControl: false
+}).setView([35.72, 51.42], 12);
 
-L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',{maxZoom:17}).addTo(map);
+L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+  maxZoom: 18
+}).addTo(map);
 
 const status = document.getElementById('status');
+const editBtn = document.getElementById('editBtn');
+const saveBtn = document.getElementById('saveBtn');
 
-// 自动从 Liveuamap 抓取当天坐标，无兜底、无写死
-async function getTodayCoords() {
-  try {
-    status.textContent = "🔍 抓取实时数据...";
-    const proxy = "https://api.allorigins.win/get?url=";
-    const api = "https://iran.liveuamap.com/get?last=100&json=1";
-    const resp = await fetch(proxy + encodeURIComponent(api));
-    const json = await resp.json();
-    const data = JSON.parse(json.contents);
+let editMode = false;
+let points = [];
 
-    const today = new Date().toISOString().split('T')[0];
-    const coords = [];
-
-    for (const item of data) {
-      if (!item.lat || !item.lng) continue;
-      const isTehran = (item.lat>35.5&&item.lat<35.9&&item.lng>51.0&&item.lng<51.8);
-      const isToday = item.time.startsWith(today);
-      const isStrike = /airstrike|explosion|bomb|missile|strike/i.test(item.title);
-      if (isTehran && isToday && isStrike) {
-        coords.push([item.lat, item.lng]);
-      }
-    }
-    const unique = [...new Map(coords.map(p => [p.join(','),p])).values()];
-    return unique.slice(0,6);
-  } catch (e) {
-    console.error("抓取失败", e);
-    // ✅ 已删除所有兜底坐标，直接返回空
-    return [];
-  }
-}
-
-async function getWind(lat, lon) {
-  try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
-    const r = await fetch(url, { cache: "no-store" });
-    const d = await r.json();
-    const u = d.current.wind_speed_10m;
-    const wd = d.current.wind_direction_10m;
-    return (u > 0 && u < 30) ? [u, wd] : [2.2, 50];
-  } catch (e) {
-    return [2.2, 50];
-  }
-}
-
+// 烟羽模型
 function plume(lat0, lon0, u, wd) {
-  const points = [];
-  const degPerM = 1/111320;
-  const theta = (270 - wd) * Math.PI/180;
-  const Q=80, H=10, xMax=u*3600;
-  for(let i=1;i<=40;i++){
-    const x = (i/40)*xMax;
-    for(let j=-40;j<=40;j++){
-      const y=(j/40)*xMax;
-      const sy=0.32*x/Math.sqrt(1+0.0004*x);
-      const sz=0.24*x/Math.sqrt(1+0.0003*x);
-      const c=(Q/(2*Math.PI*u*sy*sz))
-        *Math.exp(-y*y/(2*sy*sy))
-        *Math.exp(-H*H/(2*sz*sz));
-      if(c<1e-5)continue;
-      const xr=x*Math.cos(theta)-y*Math.sin(theta);
-      const yr=x*Math.sin(theta)+y*Math.cos(theta);
-      const lat=lat0+yr*degPerM;
-      const lon=lon0+xr*degPerM;
-      points.push([lat,lon,c]);
+  const res = [];
+  const m2deg = 1 / 111320;
+  const theta = (270 - wd) * Math.PI / 180;
+  const Q = 80, H = 10, xMax = u * 3600;
+  for (let i = 1; i <= 40; i++) {
+    const x = (i / 40) * xMax;
+    for (let j = -40; j <= 40; j++) {
+      const y = (j / 40) * xMax;
+      const sy = 0.32 * x / Math.sqrt(1 + 0.0004 * x);
+      const sz = 0.24 * x / Math.sqrt(1 + 0.0003 * x);
+      const c = (Q / (2 * Math.PI * u * sy * sz))
+        * Math.exp(-y * y / (2 * sy * sy))
+        * Math.exp(-H * H / (2 * sz * sz));
+      if (c < 1e-5) continue;
+      const xr = x * Math.cos(theta) - y * Math.sin(theta);
+      const yr = x * Math.sin(theta) + y * Math.cos(theta);
+      const lat = lat0 + yr * m2deg;
+      const lng = lon0 + xr * m2deg;
+      res.push({ lat, lng, c });
     }
   }
-  return points;
+  return res;
 }
 
-function color(c){
-  if(c>0.01)return '#ff0000';
-  if(c>0.001)return '#ffaa00';
-  if(c>0.0001)return '#ffff00';
+// 颜色
+function color(c) {
+  if (c > 0.01) return '#ff0000';
+  if (c > 0.001) return '#ffaa00';
+  if (c > 0.0001) return '#ffff00';
   return '#00ffff';
 }
 
-(async function main(){
-  const coords = await getTodayCoords();
-  status.textContent = `✅ 今日目标：${coords.length} 个`;
-  for(const [lat,lon] of coords){
-    const [u,wd] = await getWind(lat,lon);
-    L.circleMarker([lat,lon],{radius:6,color:'red',fillColor:'red',fillOpacity:1}).addTo(map);
-    const points=plume(lat,lon,u,wd);
-    const group=L.layerGroup().addTo(map);
-    points.forEach(([plat,plon,c])=>{
-      L.circleMarker([plat,plon],{
-        radius:1.5,
-        color:color(c),
-        fillColor:color(c),
-        fillOpacity:0.6
-      }).addTo(group);
-    });
+// 风
+async function getWind(lat, lon) {
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`);
+    const d = await r.json();
+    const speed = d.current.wind_speed_10m;
+    const dir = d.current.wind_direction_10m;
+    return [speed > 0 ? speed : 2.2, dir];
+  } catch (e) {
+    return [2.2, 270];
   }
-})();
+}
+
+// 绘制单个点
+async function addPoint(lat, lng) {
+  const [u, wd] = await getWind(lat, lng);
+  L.circleMarker([lat, lng], {
+    radius: 7, color: '#ff3d00', fillColor: '#ff3d00', fillOpacity: 1
+  }).addTo(map);
+
+  const puffs = plume(lat, lng, u, wd);
+  puffs.forEach(p => {
+    L.circleMarker([p.lat, p.lng], {
+      radius: 1.6,
+      color: color(p.c),
+      fillColor: color(p.c),
+      fillOpacity: 0.7
+    }).addTo(map);
+  });
+
+  points.push({ lat, lng });
+  status.textContent = `📍 已标记：${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+// 编辑模式
+editBtn.onclick = () => {
+  editMode = !editMode;
+  editBtn.textContent = editMode ? "退出编辑" : "编辑模式（点地图取点）";
+  status.textContent = editMode ? "✅ 编辑已开启，点击地图标记污染源" : "👉 退出编辑";
+};
+
+// 点击地图取点
+map.on('click', async (e) => {
+  if (!editMode) return;
+  await addPoint(e.latlng.lat, e.latlng.lng);
+});
+
+// 保存图片
+saveBtn.onclick = async () => {
+  status.textContent = "📷 正在生成图片...";
+  const mapContainer = document.getElementById('map');
+  const canvas = await html2canvas(mapContainer, { useCORS: true, scale: 2 });
+  const link = document.createElement('a');
+  link.download = '污染物扩散模拟_' + new Date().getTime() + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  status.textContent = "✅ 图片已保存";
+};
 </script>
 </body>
 </html>

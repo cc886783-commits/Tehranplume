@@ -95,7 +95,7 @@ function plume(lat0, lon0, u, wd) {
   const degPerM = 1 / 111320;
   const theta = (270 - wd) * Math.PI / 180;
   const Q = 80, H = 10;
-  const xMax = u * 1080; // 👈 扩散范围缩到 60%
+  const xMax = u * 540; // 👈 扩散范围缩到 60%
 
   for (let i = 1; i <= 120; i++) {
     const x = (i / 120) * xMax;
@@ -152,7 +152,7 @@ async function addPoint(lat, lng) {
   
   points.forEach(([plat, plon, c]) => {
     L.circleMarker([plat, plon], {
-      radius: 1.5,          // 👈 恢复成原始正常大小
+      radius: 7.5,          // 👈 恢复成原始正常大小
       color: color(c),
       fillColor: color(c),
       fillOpacity: 0.35

@@ -53,10 +53,12 @@
 <div class="mouse-coord" id="mouseCoord">📍 Coord: -- , --</div>
 
 <div class="legend">
-  <div><span style="background:#ff0000;"></span> > 0.005 kg/m³</div>
-  <div><span style="background:#ff9100;"></span> 0.0005 ~ 0.005</div>
-  <div><span style="background:#ffff00;"></span> 0.00005 ~ 0.0005</div>
-  <div><span style="background:#0088ff;"></span> ≤ 0.00005</div>
+  <div><span style="background:#ff0000;"></span> > 0.003 kg/m³</div>
+  <div><span style="background:#ff5500;"></span> 0.001 ~ 0.003</div>
+  <div><span style="background:#ff9100;"></span> 0.0003 ~ 0.001</div>
+  <div><span style="background:#ffcc00;"></span> 0.0001 ~ 0.0003</div>
+  <div><span style="background:#ffff00;"></span> 0.00003 ~ 0.0001</div>
+  <div><span style="background:#0088ff;"></span> ≤ 0.00003</div>
 </div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -90,13 +92,12 @@ function plume(lat0, lon0, u, wd) {
   const degPerM = 1 / 111320;
   const theta = (270 - wd) * Math.PI / 180;
   const Q = 80, H = 10;
-
-  // 👇 这里从 1800 改成 900 → 整体烟羽面积减小一半
   const xMax = u * 900;
 
-  for (let i = 1; i <= 120; i += 2) {
+  // 👇 更稀疏：i += 3，j += 3
+  for (let i = 1; i <= 120; i += 3) {
     const x = (i / 120) * xMax;
-    for (let j = -120; j <= 120; j += 2) {
+    for (let j = -120; j <= 120; j += 3) {
       const y = (j / 120) * xMax;
       const sy = 0.32 * x / Math.sqrt(1 + 0.0004 * x);
       const sz = 0.24 * x / Math.sqrt(1 + 0.0003 * x);
@@ -114,10 +115,15 @@ function plume(lat0, lon0, u, wd) {
   return points;
 }
 
+// ======================
+// 6 级浓度梯度
+// ======================
 function color(c) {
-  if (c > 0.005)  return '#ff0000';
-  if (c > 0.0005) return '#ff9100';
-  if (c > 0.00005) return '#ffff00';
+  if (c > 0.003)   return '#ff0000';
+  if (c > 0.001)   return '#ff5500';
+  if (c > 0.0003)  return '#ff9100';
+  if (c > 0.0001)  return '#ffcc00';
+  if (c > 0.00003) return '#ffff00';
   return '#0088ff';
 }
 

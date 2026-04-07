@@ -49,7 +49,6 @@
   <button class="save" id="saveBtn">Save as Image</button>
 </div>
 <div class="status" id="status">👉 Click [Edit Mode] then click map to add source</div>
-
 <div class="mouse-coord" id="mouseCoord">📍 Coord: -- , --</div>
 
 <div class="legend">
@@ -67,7 +66,7 @@
 
 <script>
 const map = L.map('map', {
-  minZoom: 8, maxZoom: 18, zoomControl: true, attributionControl: false
+  minZoom: 8, maxZoom: 18, zoomControl: true, attribution: false
 }).setView([35.72, 51.42], 12);
 
 L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
@@ -94,7 +93,6 @@ function plume(lat0, lon0, u, wd) {
   const Q = 80, H = 10;
   const xMax = u * 500;
 
-  // 👇 更稀疏：i += 3，j += 3
   for (let i = 1; i <= 120; i += 3) {
     const x = (i / 120) * xMax;
     for (let j = -120; j <= 120; j += 3) {
@@ -115,9 +113,6 @@ function plume(lat0, lon0, u, wd) {
   return points;
 }
 
-// ======================
-// 6 级浓度梯度
-// ======================
 function color(c) {
   if (c > 0.003)   return '#ff0000';
   if (c > 0.001)   return '#ff5500';
@@ -132,8 +127,8 @@ async function getLocalWind(lat, lon) {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,wind_direction_10m&wind_speed_unit=ms`;
     const r = await fetch(url);
     const d = await r.json();
-    const speed = d.current.wind_speed_10m
-    const dir = d.current.wind_direction_10m
+    const speed = d.current.wind_speed_10m;
+    const dir = d.current.wind_direction_10m;
     return [speed, dir];
   } catch (e) {
     return [2.2, 270];
@@ -172,20 +167,33 @@ map.on('click', async (e) => {
   if (editMode) await addPoint(e.latlng.lat, e.latlng.lng);
 });
 
+// ======================
+// ✅ 最终完美版：只截地图内容，不含按钮，图例、经纬度、比例尺都在
+// ======================
 saveBtn.onclick = async () => {
   status.textContent = "📷 Generating image...";
+
+  // 截图前临时隐藏按钮和状态栏
+  document.querySelector('.control').style.display = 'none';
+  document.querySelector('.status').style.display = 'none';
+
   setTimeout(async () => {
-    const canvas = await html2canvas(document.getElementById("map"), {
+    const canvas = await html2canvas(document.body, {
       useCORS: true,
       scale: 2,
       logging: false
     });
+
+    // 截完立刻显示回来
+    document.querySelector('.control').style.display = 'flex';
+    document.querySelector('.status').style.display = 'block';
+
     const a = document.createElement('a');
     a.download = 'dispersion_simulation.png';
     a.href = canvas.toDataURL('image/png');
     a.click();
     status.textContent = "✅ Image saved";
-  }, 400);
+  }, 300);
 };
 </script>
 </body>

@@ -17,7 +17,6 @@
     padding:6px 10px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer
   }
   .control .edit{background:#e67e22}
-  .control .save{background:#27ae60}
 
   .status{
     position:absolute;top:60px;left:10px;z-index:1000;
@@ -46,9 +45,8 @@
 
 <div class="control">
   <button class="edit" id="editBtn">Edit Mode (Click Map)</button>
-  <button class="save" id="saveBtn">Save as Image</button>
 </div>
-<div class="status" id="status">👉 Click [Edit Mode] then click map to add source</div>
+<div class="status" id="status">👉 Click Edit Mode then click map to add source</div>
 <div class="mouse-coord" id="mouseCoord">📍 Coord: -- , --</div>
 
 <div class="legend">
@@ -62,7 +60,6 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <script>
 const map = L.map('map', {
@@ -75,7 +72,6 @@ L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x
 
 const status = document.getElementById('status');
 const editBtn = document.getElementById('editBtn');
-const saveBtn = document.getElementById('saveBtn');
 const mouseCoord = document.getElementById('mouseCoord');
 
 let editMode = false;
@@ -159,44 +155,13 @@ async function addPoint(lat, lng) {
 
 editBtn.onclick = () => {
   editMode = !editMode;
-  editBtn.textContent = editMode ? "Exit Edit" : "Edit Mode (Click Map)";
-  status.textContent = editMode ? "✅ Click map to add pollution source" : "👉 Exited Edit Mode";
+  editBtn.textContent = editMode ? "Exit Edit" : "Edit Mode";
+  status.textContent = editMode ? "✅ Click map to add pollution source" : "👉 Click Edit Mode then click map to add source";
 };
 
 map.on('click', async (e) => {
   if (editMode) await addPoint(e.latlng.lat, e.latlng.lng);
 });
-
-// ======================
-// ✅ 最终完美修复：烟羽正常 + 无按钮 + 不偏移
-// ======================
-saveBtn.onclick = async () => {
-  status.textContent = "📷 Generating image...";
-  
-  // 只隐藏按钮，不碰地图内部任何东西
-  const ctrl = document.querySelector('.control');
-  const stat = document.querySelector('.status');
-  ctrl.style.visibility = 'hidden';
-  stat.style.visibility = 'hidden';
-
-  setTimeout(async () => {
-    const canvas = await html2canvas(document.body, {
-      useCORS: true,
-      scale: 2,
-      logging: false
-    });
-
-    // 截完立刻显示
-    ctrl.style.visibility = 'visible';
-    stat.style.visibility = 'visible';
-
-    const a = document.createElement('a');
-    a.download = 'dispersion_simulation.png';
-    a.href = canvas.toDataURL('image/png');
-    a.click();
-    status.textContent = "✅ Image saved";
-  }, 350);
-};
 </script>
 </body>
 </html>

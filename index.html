@@ -174,12 +174,18 @@ map.on('click', async (e) => {
 
 saveBtn.onclick = async () => {
   status.textContent = "📷 Generating image...";
-  const canvas = await html2canvas(document.getElementById('map'), { useCORS: true, scale: 2 });
-  const a = document.createElement('a');
-  a.download = 'dispersion_simulation.png';
-  a.href = canvas.toDataURL('image/png');
-  a.click();
-  status.textContent = "✅ Image saved";
+  setTimeout(async () => {
+    const canvas = await html2canvas(document.getElementById("map"), {
+      useCORS: true,
+      scale: 2,
+      logging: false
+    });
+    const a = document.createElement('a');
+    a.download = 'dispersion_simulation.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    status.textContent = "✅ Image saved";
+  }, 400);
 };
 </script>
 </body>

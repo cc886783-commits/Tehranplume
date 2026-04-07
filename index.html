@@ -6,59 +6,106 @@
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   html,body,#map{height:100%;width:100%;background:#111}
-  #map{position:relative;z-index:1}
+  
+  /* 地图容器 —— 所有要截图的东西都放这里 */
+  #map{
+    position:relative;
+    width:100%;
+    height:100%;
+    z-index:1;
+  }
 
   .control{
-    position:absolute;top:10px;left:10px;z-index:1000;
-    background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;
-    border-radius:8px;font-size:14px;display:flex;gap:8px
+    position:absolute;
+    top:10px;
+    left:10px;
+    z-index:1000;
+    background:rgba(0,0,0,0.7);
+    color:#fff;
+    padding:8px 12px;
+    border-radius:8px;
+    font-size:14px;
+    display:flex;
+    gap:8px
   }
   .control button{
-    padding:6px 10px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer
+    padding:6px 10px;
+    background:#333;
+    color:#fff;
+    border:none;
+    border-radius:4px;
+    cursor:pointer
   }
   .control .edit{background:#e67e22}
   .control .save{background:#27ae60}
 
   .status{
-    position:absolute;top:60px;left:10px;z-index:1000;
-    background:rgba(0,0,0,0.7);color:#fff;padding:8px 12px;
-    border-radius:8px;font-size:14px
+    position:absolute;
+    top:60px;
+    left:10px;
+    z-index:1000;
+    background:rgba(0,0,0,0.7);
+    color:#fff;
+    padding:8px 12px;
+    border-radius:8px;
+    font-size:14px
   }
 
+  /* 以下全部放进 map 容器内，截图不会错位 */
   .mouse-coord{
-    position:absolute;bottom:10px;left:10px;z-index:1000;
-    background:rgba(0,0,0,0.8);color:#fff;padding:8px 12px;
-    border-radius:8px;font-size:14px
+    position:absolute;
+    bottom:10px;
+    left:10px;
+    z-index:1000;
+    background:rgba(0,0,0,0.8);
+    color:#fff;
+    padding:8px 12px;
+    border-radius:8px;
+    font-size:14px
   }
-
   .legend{
-    position:absolute;bottom:10px;right:10px;z-index:1000;
-    background:rgba(0,0,0,0.8);color:#fff;padding:10px;
-    border-radius:8px;font-size:14px;line-height:1.6
+    position:absolute;
+    bottom:10px;
+    right:10px;
+    z-index:1000;
+    background:rgba(0,0,0,0.8);
+    color:#fff;
+    padding:10px;
+    border-radius:8px;
+    font-size:14px;
+    line-height:1.6
   }
   .legend span{
-    display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:6px;vertical-align:middle
+    display:inline-block;
+    width:14px;
+    height:14px;
+    border-radius:3px;
+    margin-right:6px;
+    vertical-align:middle
   }
 </style>
 </head>
 <body>
-<div id="map"></div>
 
+<!-- 所有截图内容都放进 #map 内部，保证不错位 -->
+<div id="map">
+  <div class="mouse-coord">📍 Coord: -- , --</div>
+  <div class="legend">
+    <div><span style="background:#ff0000;"></span> > 0.003 kg/m³</div>
+    <div><span style="background:#ff5500;"></span> 0.001 ~ 0.003</div>
+    <div><span style="background:#ff9100;"></span> 0.0003 ~ 0.001</div>
+    <div><span style="background:#ffcc00;"></span> 0.0001 ~ 0.0003</div>
+    <div><span style="background:#ffff00;"></span> 0.00003 ~ 0.0001</div>
+    <div><span style="background:#0088ff;"></span> ≤ 0.00003</div>
+  </div>
+</div>
+
+<!-- 按钮和状态放在外面，不进截图 -->
 <div class="control">
   <button class="edit" id="editBtn">Edit Mode (Click Map)</button>
   <button class="save" id="saveBtn">Save as Image</button>
 </div>
 <div class="status" id="status">👉 Click [Edit Mode] then click map to add source</div>
-<div class="mouse-coord" id="mouseCoord">📍 Coord: -- , --</div>
-
-<div class="legend">
-  <div><span style="background:#ff0000;"></span> > 0.003 kg/m³</div>
-  <div><span style="background:#ff5500;"></span> 0.001 ~ 0.003</div>
-  <div><span style="background:#ff9100;"></span> 0.0003 ~ 0.001</div>
-  <div><span style="background:#ffcc00;"></span> 0.0001 ~ 0.0003</div>
-  <div><span style="background:#ffff00;"></span> 0.00003 ~ 0.0001</div>
-  <div><span style="background:#0088ff;"></span> ≤ 0.00003</div>
-</div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -76,7 +123,8 @@ L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x
 const status = document.getElementById('status');
 const editBtn = document.getElementById('editBtn');
 const saveBtn = document.getElementById('saveBtn');
-const mouseCoord = document.getElementById('mouseCoord');
+const mouseCoord = document.querySelector('.mouse-coord');
+const legend = document.querySelector('.legend');
 
 let editMode = false;
 
@@ -168,26 +216,16 @@ map.on('click', async (e) => {
 });
 
 // ======================
-// ✅ 最终完美版：只截地图内容，不含按钮，图例、经纬度、比例尺都在
+// ✅ 最终修复：不错位 + 不包含按钮
 // ======================
 saveBtn.onclick = async () => {
   status.textContent = "📷 Generating image...";
-
-  // 截图前临时隐藏按钮和状态栏
-  document.querySelector('.control').style.display = 'none';
-  document.querySelector('.status').style.display = 'none';
-
   setTimeout(async () => {
-    const canvas = await html2canvas(document.body, {
+    const canvas = await html2canvas(document.getElementById('map'), {
       useCORS: true,
       scale: 2,
       logging: false
     });
-
-    // 截完立刻显示回来
-    document.querySelector('.control').style.display = 'flex';
-    document.querySelector('.status').style.display = 'block';
-
     const a = document.createElement('a');
     a.download = 'dispersion_simulation.png';
     a.href = canvas.toDataURL('image/png');

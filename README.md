@@ -1,4 +1,59 @@
 # Tehranplume
+# Tehran Air Strike Pollutant Diffusion Prediction System
+
+This project implements real-time visual prediction of pollutant diffusion in Tehran under air strike scenarios based on the **Gaussian Plume Model**, integrating real-time meteorological data and interactive map visualization. Users can generate a pollutant plume diffusion map by simply clicking on a geographic location.
+
+## Project Introduction
+
+This system is designed for simulating and analyzing pollutant diffusion caused by air strikes in urban Tehran. It uses the classic Gaussian Plume Model for diffusion calculation, combined with real-time meteorological data to improve prediction accuracy. The interactive map visualizes the pollutant spread and concentration distribution, providing support for emergency analysis and research.
+
+## Core Technologies & Data Sources
+
+1. **Meteorological Data**: Real-time wind speed and direction are obtained via the **Open-Meteo API**, providing dynamic input for the diffusion model.
+2. **Map Visualization**: Uses **Carto Light** basemap for a clean and clear geographic visualization base.
+3. **Model Parameters**:
+   - Initial source concentration: 0.08 kg/m³
+   - Diffusion time: 1 hour
+4. **Deployment**: Hosted online through **Vercel** for direct browser access.
+
+## Online Usage
+
+Available at:
+🌐 https://tehranplume260405.vercel.app
+
+### How to Use
+
+1. Open the link above and wait for the Tehran map to load.
+2. Click on the map to select the impact location.
+3. The system automatically fetches real-time wind data and runs the Gaussian Plume Model.
+4. The pollutant plume visualization is displayed immediately.
+
+### Access Notice
+
+This project is hosted on overseas servers. It can be accessed directly outside mainland China; users in mainland China may need a **VPN** for normal use.
+
+## Features
+
+- Real-time wind data from Open-Meteo API
+- Clean Carto light basemap for Tehran region
+- One-hour pollutant diffusion calculation using Gaussian Plume Model
+- Interactive point-and-click geographic selection
+- Lightweight web application, no local setup required
+
+## Tech Stack
+
+- Frontend map rendering: Web map framework
+- Data API: Open-Meteo
+- Diffusion model: Gaussian Plume Model
+- Deployment: Vercel
+
+## Disclaimer
+
+1. This project is a **simulation tool** for research and emergency reference only. Results are based on theoretical calculations and do not reflect real-world outcomes.
+2. Dependent on Open-Meteo API availability; service interruptions may affect performance.
+3. Tuned for the Tehran region; parameters must be adjusted for other areas.
+
+
 # 德黑兰空袭污染物扩散预测系统
 
 本项目基于高斯烟羽模型，实现德黑兰地区空袭场景下污染物扩散的实时可视化预测，集成气象数据获取与地图渲染功能，可通过点击坐标快速生成污染物烟羽扩散图。
